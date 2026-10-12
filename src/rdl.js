@@ -1,4 +1,6 @@
-export const ANALYSIS_VERSION = 'rdl-2d-v1';
+export const ANALYSIS_VERSION = 'rdl-2d-v2';
+// Last upright frame must lead into the hinge within one second of continuous tracking.
+export const READY_MAX_SECONDS = 1;
 export const exercises = Object.freeze({rdl: {name: 'ルーマニアンデッドリフト', supported: true}, squat: {name: 'スクワット', supported: false}, bench: {name: 'ベンチプレス', supported: false}});
 const finite = Number.isFinite;
 export function angle(a, b, c) {
@@ -25,6 +27,7 @@ export function detectReps(rows) {
     last=r.time;
     if (!finite(r.hip) || !finite(r.knee) || !finite(r.lean)) continue;
     if (!active) {
+      if(ready && r.time-ready.time>READY_MAX_SECONDS)ready=null;
       if (r.hip>=155) {up++; if(up>=3) ready=r;}
       else if (r.hip<135 && ready) {active={start:ready.time, rows:[ready,r], bottom:r};up=0;}
       else up=0;

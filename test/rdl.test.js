@@ -10,3 +10,13 @@ test('geometry handles aspect ratio and refuses weak/cropped/degenerate joints',
 test('front angle and no pose are explicitly unassessable',()=>{assert.deepEqual(analyzeFrames([{time:0,landmarks:null}],{camera:'front'}).reps,[]);assert.equal(analyzeFrames([]).coverage,0);});
 test('reference comparison requires matching exercise, side, angle, version and quality',()=>{const rep=detectReps(rows())[0],a={exercise:'rdl',camera:'side',side:'left',version:'v1',coverage:1,reps:[rep]};assert.equal(compareRep(rep,a,a)[0].delta,0);for(const patch of [{exercise:'squat'},{side:'right'},{camera:'front'},{version:'v2'},{coverage:.3},{reps:[]}])assert.equal(compareRep(rep,{...a,...patch},a),null);});
 test('reused overlay mapping aligns portrait letterboxing and mirror',()=>{const t=videoTransform(720,1280,400,300);assert.equal(t.x({x:.5}),200);assert.equal(t.y({y:1}),300);const mirror=videoTransform(1280,720,400,300,true);assert.equal(mirror.x({x:0}),400);});
+test('long intermediate stance expires ready and cannot attach to an old start',()=>{
+  const intermediate=Array.from({length:12},(_,i)=>({time:.45+i*.15,hip:145,knee:160,lean:35}));
+  const lateHinge=rows().slice(4).map((r,i)=>({...r,time:2.25+i*.15}));
+  assert.equal(detectReps([...rows().slice(0,3),...intermediate,...lateHinge]).length,0);
+});
+test('after readiness expiry a fresh upright stance can start a fresh rep',()=>{
+  const waiting=Array.from({length:12},(_,i)=>({time:.45+i*.15,hip:145,knee:160,lean:35}));
+  const fresh=rows().map(r=>({...r,time:r.time+2.25}));
+  const reps=detectReps([...rows().slice(0,3),...waiting,...fresh]);assert.equal(reps.length,1);assert.equal(reps[0].start,2.55);
+});
