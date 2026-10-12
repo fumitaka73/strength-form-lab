@@ -1,8 +1,10 @@
 import {readFileSync} from 'node:fs';
 import {test,expect} from '@playwright/test';
+async function openSettings(page){if(!(await page.locator('.capture-settings').evaluate(el=>el.open)))await page.locator('.capture-settings summary').click();}
 test('mobile navigation, safe empty state, same-origin model and MediaPipe inference',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');
-  await expect(page.getByRole('heading',{name:'Strength Form Lab'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Strength Form Lab',exact:true})).toBeVisible();
+  await expect(page.locator('.app-version')).toHaveText('v'+JSON.parse(readFileSync('package.json','utf8')).version);
   await expect(page.locator('#analyze')).toBeDisabled();
   await page.getByRole('button',{name:'Good Form',exact:true}).click();await expect(page.locator('#references')).toContainText('まだ記録がありません');
   await page.getByRole('button',{name:'履歴',exact:true}).click();await expect(page.locator('#records')).toContainText('まだ記録がありません');
@@ -28,7 +30,7 @@ test('real video playback, persisted history, comparison snapshot, note and isol
   await expect(page.locator('#name')).toHaveValue('<img src=x onerror=alert(1)>');expect(await page.locator('#records img').count()).toBe(0);
   await page.locator('#compare').selectOption('baseline');await expect(page.locator('#result')).toContainText('基準との差 0°');
   await expect(page.locator('#camera')).toBeDisabled();await expect(page.locator('#side')).toBeDisabled();
-  await page.locator('#name').fill('保存後に変更した名前');await page.locator('#kind').selectOption('reference');
+  await openSettings(page);await page.locator('#name').fill('保存後に変更した名前');await openSettings(page);await page.locator('#kind').selectOption('reference');
   await page.locator('#note').fill('実際は1回でした');await page.locator('#save').click();await expect(page.locator('#status')).toContainText('保存しました');
   await page.getByRole('button',{name:'最下点を見る'}).click();await expect(page.locator('#video')).toHaveJSProperty('currentTime',.4);
   await page.locator('#speed').selectOption('0.25');await expect(page.locator('#video')).toHaveJSProperty('playbackRate',.25);
@@ -36,9 +38,9 @@ test('real video playback, persisted history, comparison snapshot, note and isol
   await page.reload();await page.getByRole('button',{name:'Good Form',exact:true}).click();await page.locator('#references .record').filter({hasText:'保存後に変更した名前'}).getByRole('button',{name:'レビューする'}).click();await expect(page.locator('#name')).toHaveValue('保存後に変更した名前');await expect(page.locator('#kind')).toHaveValue('reference');await expect(page.locator('#note')).toHaveValue('実際は1回でした');await expect(page.locator('#compare')).toHaveValue('snapshot');
   page.on('dialog',d=>d.accept());await page.getByRole('button',{name:'Good Form',exact:true}).click();await page.locator('#references .record').filter({has:page.getByRole('heading',{name:'基準',exact:true})}).getByRole('button',{name:'削除',exact:true}).click();await expect(page.locator('#references .record')).toHaveCount(1);
   await page.locator('#references .record').getByRole('button',{name:'レビューする'}).click();await expect(page.locator('#result')).toContainText('基準との差 0°');
-  await page.locator('#kind').selectOption('session');await page.locator('#save').click();await expect(page.locator('#status')).toContainText('保存しました');await page.reload();
+  await openSettings(page);await page.locator('#kind').selectOption('session');await page.locator('#save').click();await expect(page.locator('#status')).toContainText('保存しました');await page.reload();
   await page.getByRole('button',{name:'履歴',exact:true}).click();await expect(page.locator('#records')).toContainText('保存後に変更した名前');await page.getByRole('button',{name:'レビューする'}).click();
-  await page.locator('#reconfigure').click();await expect(page.locator('#camera')).toBeEnabled();await expect(page.locator('#side')).toBeEnabled();await expect(page.locator('#save')).toBeDisabled();await expect(page.locator('#result')).toBeEmpty();
+  await openSettings(page);await page.locator('#reconfigure').click();await expect(page.locator('#camera')).toBeEnabled();await expect(page.locator('#side')).toBeEnabled();await expect(page.locator('#save')).toBeDisabled();await expect(page.locator('#result')).toBeEmpty();
 });
 
 test('fresh analysis saves edited metadata and preserves playback across BFCache lifecycle',async({page})=>{
@@ -48,7 +50,7 @@ test('fresh analysis saves edited metadata and preserves playback across BFCache
   await expect(page.locator('#result')).toContainText('0 レップ候補');
   await expect(page.locator('#result')).toContainText('計測可能フレーム 0%');
   await expect(page.locator('#camera')).toBeDisabled();await expect(page.locator('#side')).toBeDisabled();
-  await page.locator('#name').fill('解析後のGood Form');await page.locator('#kind').selectOption('reference');
+  await openSettings(page);await page.locator('#name').fill('解析後のGood Form');await openSettings(page);await page.locator('#kind').selectOption('reference');
   await page.locator('#save').click();await expect(page.locator('#status')).toContainText('保存しました');
   // Dispatch the BFCache lifecycle contract. This is not physical Safari navigation.
   await page.locator('#video').evaluate(v=>v.play());
@@ -94,7 +96,8 @@ test('torso-only candidates can be reviewed without producing angle comparison',
     await saveSession({id:'torso-only',kind:'session',name:'体幹のみ',createdAt:1,blob,frames:[],analysis:{version:'rdl-2d-v4',model:'full',exercise:'rdl',camera:'side',side:'left',coverage:0,metricCoverage:{hip:0,knee:0,lean:1},reps:[],motionCandidates:[candidate],warnings:[],rows:[]}});
   },readFileSync('e2e/fixtures/blank.mp4').toString('base64'));
   await page.reload();await page.getByRole('button',{name:'履歴',exact:true}).click();await page.getByRole('button',{name:'レビューする'}).click();
-  await expect(page.locator('#result')).toContainText('0 レップ候補');
+  await expect(page.locator('#result')).toContainText('1 往復候補');
+  await expect(page.locator('#result')).toContainText('角度によるレップ候補：0件');
   await expect(page.locator('#result')).toContainText('体幹の往復候補 1区間');
   await expect(page.locator('#result')).not.toContainText('基準との差');
   await expect(page.locator('#model')).toHaveValue('full');await expect(page.locator('#model')).toBeDisabled();
