@@ -1,0 +1,22 @@
+{
+  "name": "strength-form-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "node scripts/copy-pose-assets.js && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test test/*.test.js",
+    "postinstall": "node scripts/copy-pose-assets.js",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "@mediapipe/pose": "0.5.1675469404"
+  },
+  "devDependencies": {
+    "vite": "8.3.3",
+    "@playwright/test": "1.61.1",
+    "fake-indexeddb": "6.2.5"
+  }
+}
