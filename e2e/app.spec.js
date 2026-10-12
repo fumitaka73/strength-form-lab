@@ -16,7 +16,7 @@ test('real video playback, persisted history, comparison snapshot, note and isol
   await page.evaluate(async(encoded)=>{
     const {saveSession}=await import('/src/storage.js');
     // H.264 fixture for real playback; the saved pose/metrics below are synthetic.
-    const blob=new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'video/mp4'}),rep={id:1,start:0,end:.9,bottom:.4,hipMin:90,kneeMin:160,leanMax:70,rom:80,duration:.9,assessment:'synthetic fixture'};
+    const blob=new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'video/mp4'}),rep={id:1,start:0,end:.9,bottom:.4,hipMin:90,kneeMin:null,leanMax:70,rom:80,duration:.9,assessment:'synthetic fixture'};
     const analysis={version:'rdl-2d-v1',exercise:'rdl',camera:'side',side:'left',aspect:4/3,coverage:1,reps:[rep],warnings:['fixture'],rows:[]};
     const landmarks=Array.from({length:33},(_,i)=>({x:.3+(i%2)*.2,y:.1+(i/33)*.7,visibility:.9}));
     await saveSession({id:'baseline',kind:'reference',name:'基準',createdAt:1,blob,frames:[],analysis});
@@ -24,6 +24,7 @@ test('real video playback, persisted history, comparison snapshot, note and isol
   },readFileSync('e2e/fixtures/blank.mp4').toString('base64'));
   await page.reload();await page.getByRole('button',{name:'履歴',exact:true}).click();await page.getByRole('button',{name:'レビューする'}).click();
   await expect(page.locator('#video')).toHaveJSProperty('readyState',4);
+  await expect(page.locator('#result')).toContainText('計測不可');
   await expect(page.locator('#name')).toHaveValue('<img src=x onerror=alert(1)>');expect(await page.locator('#records img').count()).toBe(0);
   await page.locator('#compare').selectOption('baseline');await expect(page.locator('#result')).toContainText('基準との差 0°');
   await expect(page.locator('#camera')).toBeDisabled();await expect(page.locator('#side')).toBeDisabled();
