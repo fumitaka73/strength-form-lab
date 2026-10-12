@@ -4,7 +4,7 @@ let pending;
 // Only the first completed rep is used as a comparison baseline. No Pose or rows.
 export function referenceSnapshot(row) {
   const a=row.analysis;
-  return {id:row.id,name:row.name,analysis:{version:a.version,exercise:a.exercise,camera:a.camera,side:a.side,coverage:a.coverage,reps:a.reps.slice(0,1).map(r=>({hipMin:r.hipMin,kneeMin:r.kneeMin,leanMax:r.leanMax,rom:r.rom}))}};
+  return {id:row.id,name:row.name,analysis:{model:a.model??'lite',version:a.version,exercise:a.exercise,camera:a.camera,side:a.side,coverage:a.coverage,reps:a.reps.slice(0,1).map(r=>({hipMin:r.hipMin,kneeMin:r.kneeMin,leanMax:r.leanMax,rom:r.rom}))}};
 }
 export function sessionSummary(row) {
   return {...referenceSnapshot(row),kind:row.kind,createdAt:row.createdAt,repCount:row.analysis.reps.length};
