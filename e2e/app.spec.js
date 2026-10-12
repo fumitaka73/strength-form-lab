@@ -104,3 +104,19 @@ test('torso-only candidates can be reviewed without producing angle comparison',
   await page.getByRole('button',{name:'最大前傾点を見る'}).click();await expect(page.locator('#video')).toHaveJSProperty('currentTime',.4);
   await page.getByRole('button',{name:'候補区間を再生'}).click();await expect(page.locator('#video')).toHaveJSProperty('paused',false);
 });
+
+test('weight persists with partial hinge estimates without inventing spinal values',async({page})=>{
+  await page.goto('/');await page.evaluate(async(encoded)=>{
+    const {saveSession}=await import('/src/storage.js');
+    const blob=new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'video/mp4'});
+    const rows=Array.from({length:10},(_,i)=>({time:i/10,hip:i<6?100+i*10:null,knee:null,lean:i*3}));
+    const candidate={id:-1,start:0,end:.9,bottom:.4,basis:'torso-motion',assessment:'fixture'};
+    await saveSession({id:'weight-case',kind:'session',name:'重量レビュー',createdAt:1,weightKg:20,blob,frames:[],analysis:{version:'rdl-2d-v4',model:'full',exercise:'rdl',camera:'side',side:'left',coverage:.6,metricCoverage:{hip:.6,knee:0,lean:1},reps:[],motionCandidates:[candidate],warnings:['fixture'],rows}});
+  },readFileSync('e2e/fixtures/blank.mp4').toString('base64'));
+  await page.reload();await page.getByRole('button',{name:'履歴',exact:true}).click();await expect(page.locator('#records')).toContainText('20 kg');await page.getByRole('button',{name:'レビューする'}).click();
+  await expect(page.locator('#weight')).toHaveValue('20');await expect(page.locator('.hinge-estimate')).toContainText('約40°');await expect(page.locator('.hinge-estimate')).toContainText('区間の60%');await expect(page.locator('.back-status')).toContainText('未評価');
+  await page.locator('#weight').fill('42.5');await page.locator('#save').click();await expect(page.locator('#status')).toContainText('保存しました');
+  await page.reload();await page.getByRole('button',{name:'履歴',exact:true}).click();await expect(page.locator('#records')).toContainText('42.5 kg');await page.getByRole('button',{name:'レビューする'}).click();await expect(page.locator('#weight')).toHaveValue('42.5');
+  await page.locator('#weight').fill('-1');await page.locator('#save').click();await expect(page.locator('#status')).toContainText('0以上');
+  await page.reload();await page.getByRole('button',{name:'履歴',exact:true}).click();await expect(page.locator('#records')).toContainText('42.5 kg');
+});
