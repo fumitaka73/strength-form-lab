@@ -1,4 +1,4 @@
-export const ANALYSIS_VERSION = 'rdl-2d-v2';
+export const ANALYSIS_VERSION = 'rdl-2d-v3';
 // Last upright frame must lead into the hinge within one second of continuous tracking.
 export const READY_MAX_SECONDS = 1;
 export const exercises = Object.freeze({rdl: {name: 'ルーマニアンデッドリフト', supported: true}, squat: {name: 'スクワット', supported: false}, bench: {name: 'ベンチプレス', supported: false}});
@@ -11,10 +11,11 @@ export function angle(a, b, c) {
 export function measure(frame, aspect=1, side='left') {
   const ids=side==='left'?[11,23,25,27]:[12,24,26,28];
   const p=ids.map(i=>frame.landmarks?.[i]);
-  if (!(aspect>0) || p.some(v=>!v || !finite(v.x) || !finite(v.y) || (v.visibility??0)<.65 || v.x<0 || v.x>1 || v.y<0 || v.y>1)) return {time:frame.time,hip:null,knee:null,lean:null};
-  const [s,h,k,a]=p.map(v=>({x:v.x*aspect,y:v.y}));
-  const hip=angle(s,h,k), knee=angle(h,k,a);
-  const lean=Math.hypot(s.x-h.x,s.y-h.y)>.01 ? Math.abs(Math.atan2(s.x-h.x,h.y-s.y)*180/Math.PI) : null;
+  const valid=v=>aspect>0 && finite(aspect) && v && finite(v.x) && finite(v.y) && finite(v.visibility) && v.visibility>=.65 && v.x>=0 && v.x<=1 && v.y>=0 && v.y<=1;
+  // Occluded ankles must not invalidate visible hip/torso measurements.
+  const [s,h,k,a]=p.map(v=>valid(v)?{x:v.x*aspect,y:v.y}:null);
+  const hip=s&&h&&k?angle(s,h,k):null, knee=h&&k&&a?angle(h,k,a):null;
+  const lean=s&&h&&Math.hypot(s.x-h.x,s.y-h.y)>.01 ? Math.abs(Math.atan2(s.x-h.x,h.y-s.y)*180/Math.PI) : null;
   return {time:frame.time,hip,knee,lean};
 }
 export function detectReps(rows) {
@@ -23,9 +24,9 @@ export function detectReps(rows) {
   const reps=[];
   for (const r of rows) {
     if (!finite(r.time) || r.time<=last) continue;
-    if (r.time-last>.3 || !finite(r.hip) || !finite(r.knee) || !finite(r.lean)) {ready=null;active=null;up=0;}
+    if (r.time-last>.3 || !finite(r.hip) || !finite(r.lean)) {ready=null;active=null;up=0;}
     last=r.time;
-    if (!finite(r.hip) || !finite(r.knee) || !finite(r.lean)) continue;
+    if (!finite(r.hip) || !finite(r.lean)) continue;
     if (!active) {
       if(ready && r.time-ready.time>READY_MAX_SECONDS)ready=null;
       if (r.hip>=155) {up++; if(up>=3) ready=r;}
@@ -37,7 +38,8 @@ export function detectReps(rows) {
       up=r.hip>=155?up+1:0;
       if(up>=3) {
         const duration=r.time-active.start, rom=Math.max(...active.rows.map(x=>x.hip))-active.bottom.hip;
-        if(duration>=.8 && duration<=15 && rom>=30) reps.push({id:reps.length+1,start:active.start,end:r.time,bottom:active.bottom.time,hipMin:active.bottom.hip,kneeMin:Math.min(...active.rows.map(x=>x.knee)),leanMax:Math.max(...active.rows.map(x=>x.lean)),rom,duration,assessment:'2Dのヒンジ候補。映像で本数と膝の動きを確認してください。'});
+        const knees=active.rows.map(x=>x.knee), completeKnee=knees.every(finite);
+        if(duration>=.8 && duration<=15 && rom>=30) reps.push({id:reps.length+1,start:active.start,end:r.time,bottom:active.bottom.time,hipMin:active.bottom.hip,kneeMin:completeKnee?Math.min(...knees):null,leanMax:Math.max(...active.rows.map(x=>x.lean)),rom,duration,assessment:completeKnee?'2Dのヒンジ候補。映像で本数と膝の動きを確認してください。':'2Dのヒンジ候補。足首などが見えない区間があるため、膝の最小角度は判定保留です。'});
         active=null;ready=r;up=3;
       }
       if(active && r.time-active.start>15) {active=null;ready=null;up=0;}
@@ -48,13 +50,16 @@ export function detectReps(rows) {
 export function analyzeFrames(frames, {aspect=1, side='left', camera='side'}={}) {
   const rows=frames.map(f=>measure(f,aspect,side));
   const coverage=rows.length?rows.filter(r=>finite(r.hip)).length/rows.length:0;
+  const metricCoverage=Object.fromEntries(['hip','knee','lean'].map(key=>[key,rows.length?rows.filter(r=>finite(r[key])).length/rows.length:0]));
   const warnings=['背骨の丸まり・腰の反り・筋肉の緊張・重量の適否は、このPoseから判定できません。','レップ数と角度は暫定の2D推定です。実際の動画で確認してください。'];
   if(coverage<.8) warnings.push('関節の欠測が多いため、レップの見逃しがあり得ます。');
+  if(metricCoverage.knee<.8) warnings.push('足首・膝・股関節の一部が見えにくく、膝角度の計測が不足しています。足首だけの欠測ではヒンジ候補の検出を止めません。');
   if(camera!=='side') warnings.push('横以外の映像ではRDLの角度とレップを判定しません。');
-  return {version:ANALYSIS_VERSION,exercise:'rdl',camera,side,aspect,rows,coverage,reps:camera==='side'?detectReps(rows):[],warnings};
+  return {version:ANALYSIS_VERSION,exercise:'rdl',camera,side,aspect,rows,coverage,metricCoverage,reps:camera==='side'?detectReps(rows):[],warnings};
 }
 export function compareRep(rep, reference, current) {
   if(!reference || reference.exercise!==current.exercise || reference.version!==current.version || reference.camera!=='side' || current.camera!=='side' || reference.side!==current.side || reference.coverage<.8 || current.coverage<.8 || !reference.reps.length) return null;
   const baseline=reference.reps[0];
-  return ['hipMin','kneeMin','leanMax','rom'].map(key=>({key,delta:rep[key]-baseline[key],baseline:baseline[key]}));
+  const differences=['hipMin','kneeMin','leanMax','rom'].filter(key=>finite(rep[key])&&finite(baseline[key])).map(key=>({key,delta:rep[key]-baseline[key],baseline:baseline[key]}));
+  return differences.length?differences:null;
 }
