@@ -8,13 +8,13 @@ export function seekVideo(video,time) {
     video.addEventListener('seeked',done);video.addEventListener('error',failed);video.currentTime=time;
   });
 }
-export async function scanVideo(video,signal,progress) {
+export async function scanVideo(video,signal,progress,{model='lite'}={}) {
   if(!Number.isFinite(video.duration)||video.duration<=0||video.duration>120)throw new Error('MVPでは2分以内の動画を選んでください。');
   const check=()=>{if(signal.aborted)throw new DOMException('分析を中止しました。','AbortError');};
   let points=null,pose; const frames=[],original=video.currentTime;
   video.pause();
   try {
-    check();pose=await createPoseEngine(r=>{points=r.poseLandmarks?.map(p=>({x:p.x,y:p.y,visibility:p.visibility}))??null;});
+    check();pose=await createPoseEngine(r=>{points=r.poseLandmarks?.map(p=>({x:p.x,y:p.y,visibility:p.visibility}))??null;},model);
     await pose.initialize();check();
     const canvas=document.createElement('canvas'),scale=Math.min(1,640/Math.max(video.videoWidth,video.videoHeight));
     canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);

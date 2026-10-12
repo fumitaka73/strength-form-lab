@@ -1,4 +1,5 @@
-export const ANALYSIS_VERSION = 'rdl-2d-v3';
+import {detectMotionCandidates} from './motion-candidates.js';
+export const ANALYSIS_VERSION = 'rdl-2d-v4';
 // Last upright frame must lead into the hinge within one second of continuous tracking.
 export const READY_MAX_SECONDS = 1;
 export const exercises = Object.freeze({rdl: {name: 'ルーマニアンデッドリフト', supported: true}, squat: {name: 'スクワット', supported: false}, bench: {name: 'ベンチプレス', supported: false}});
@@ -47,7 +48,7 @@ export function detectReps(rows) {
   }
   return reps;
 }
-export function analyzeFrames(frames, {aspect=1, side='left', camera='side'}={}) {
+export function analyzeFrames(frames, {aspect=1, side='left', camera='side', model='lite'}={}) {
   const rows=frames.map(f=>measure(f,aspect,side));
   const coverage=rows.length?rows.filter(r=>finite(r.hip)).length/rows.length:0;
   const metricCoverage=Object.fromEntries(['hip','knee','lean'].map(key=>[key,rows.length?rows.filter(r=>finite(r[key])).length/rows.length:0]));
@@ -55,10 +56,13 @@ export function analyzeFrames(frames, {aspect=1, side='left', camera='side'}={})
   if(coverage<.8) warnings.push('関節の欠測が多いため、レップの見逃しがあり得ます。');
   if(metricCoverage.knee<.8) warnings.push('足首・膝・股関節の一部が見えにくく、膝角度の計測が不足しています。足首だけの欠測ではヒンジ候補の検出を止めません。');
   if(camera!=='side') warnings.push('横以外の映像ではRDLの角度とレップを判定しません。');
-  return {version:ANALYSIS_VERSION,exercise:'rdl',camera,side,aspect,rows,coverage,metricCoverage,reps:camera==='side'?detectReps(rows):[],warnings};
+  const reps=camera==='side'?detectReps(rows):[];
+  const motionCandidates=camera==='side'&&!reps.length?detectMotionCandidates(rows):[];
+  if(motionCandidates.length)warnings.push('股関節角度でレップを確定できないため、体幹の往復を確認用候補として表示します。RDLの確定本数やフォーム採点ではありません。');
+  return {model,motionCandidates,version:ANALYSIS_VERSION,exercise:'rdl',camera,side,aspect,rows,coverage,metricCoverage,reps,warnings};
 }
 export function compareRep(rep, reference, current) {
-  if(!reference || reference.exercise!==current.exercise || reference.version!==current.version || reference.camera!=='side' || current.camera!=='side' || reference.side!==current.side || reference.coverage<.8 || current.coverage<.8 || !reference.reps.length) return null;
+  if(!reference || (reference.model??'lite')!==(current.model??'lite') || reference.exercise!==current.exercise || reference.version!==current.version || reference.camera!=='side' || current.camera!=='side' || reference.side!==current.side || reference.coverage<.8 || current.coverage<.8 || !reference.reps.length) return null;
   const baseline=reference.reps[0];
   const differences=['hipMin','kneeMin','leanMax','rom'].filter(key=>finite(rep[key])&&finite(baseline[key])).map(key=>({key,delta:rep[key]-baseline[key],baseline:baseline[key]}));
   return differences.length?differences:null;
