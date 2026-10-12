@@ -1,3 +1,4 @@
+import {parseWeight} from './session-weight.js';
 export const DB_NAME='strength-form-lab';
 export const DB_VERSION=2;
 let pending;
@@ -7,7 +8,7 @@ export function referenceSnapshot(row) {
   return {id:row.id,name:row.name,analysis:{model:a.model??'lite',version:a.version,exercise:a.exercise,camera:a.camera,side:a.side,coverage:a.coverage,reps:a.reps.slice(0,1).map(r=>({hipMin:r.hipMin,kneeMin:r.kneeMin,leanMax:r.leanMax,rom:r.rom}))}};
 }
 export function sessionSummary(row) {
-  return {...referenceSnapshot(row),kind:row.kind,createdAt:row.createdAt,repCount:row.analysis.reps.length,motionCount:row.analysis.motionCandidates?.length??0};
+  return {...referenceSnapshot(row),kind:row.kind,createdAt:row.createdAt,weightKg:parseWeight(row.weightKg),repCount:row.analysis.reps.length,motionCount:row.analysis.motionCandidates?.length??0};
 }
 function database() {
   return pending??=new Promise((resolve,reject)=>{
@@ -32,7 +33,7 @@ async function transact(stores,mode,action) {
   return new Promise((resolve,reject)=>{const tx=db.transaction(stores,mode),r=action(tx);tx.oncomplete=()=>resolve(r?.result);tx.onabort=tx.onerror=()=>reject(tx.error??new Error('保存に失敗しました。容量を確認してください。'));});
 }
 export const saveSession=row=>{
-  const saved={...row,referenceSnapshot:row.referenceSnapshot?referenceSnapshot(row.referenceSnapshot):null};
+  const saved={...row,weightKg:parseWeight(row.weightKg),referenceSnapshot:row.referenceSnapshot?referenceSnapshot(row.referenceSnapshot):null};
   return transact(['sessions','summaries'],'readwrite',tx=>{tx.objectStore('summaries').put(sessionSummary(saved));return tx.objectStore('sessions').put(saved);});
 };
 export const listSessions=()=>transact(['summaries'],'readonly',tx=>tx.objectStore('summaries').getAll());

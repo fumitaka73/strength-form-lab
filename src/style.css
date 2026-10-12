@@ -7,3 +7,5 @@ main{padding:0 16px calc(100px + env(safe-area-inset-bottom));max-width:540px;ma
 @media(min-width:600px){#app{border-left:1px solid var(--line);border-right:1px solid var(--line)}}@media(max-width:360px){main{padding-left:10px;padding-right:10px}.card{padding:14px}.fields{grid-template-columns:1fr}.app-header{padding-left:16px;padding-right:16px}.app-header h1{font-size:18px}}
 
 .fields label:has(#model),.fields label:has(#name){grid-column:1 / -1}html{scroll-padding-top:110px;scroll-padding-bottom:100px}
+
+.weight-field{margin-top:18px}.weight-field input{max-width:180px}.result-weight{font-size:16px;font-weight:650}.back-status{padding:12px;background:#f2f4ef;border-radius:10px;color:#697461;font-size:12px}.analysis-details{margin:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.hinge-estimate h4{font-size:13px;margin:12px 0}.hinge-estimate h4 small{display:block;margin-top:5px;font-weight:400;color:#78836f;font-size:10px}
