@@ -83,3 +83,21 @@ test('history and reference selection read summaries, fetching only the chosen v
   await expect(page.locator('#name')).toHaveValue('chosen');await page.locator('#compare').selectOption('good');await expect(page.locator('#result')).toContainText('基準との差 0°');
   expect(await page.evaluate(()=>window.dbReads.filter(r=>r.store==='sessions'))).toEqual([{store:'sessions',method:'get',id:'chosen'}]);
 });
+
+
+test('torso-only candidates can be reviewed without producing angle comparison',async({page})=>{
+  await page.goto('/');
+  await page.evaluate(async(encoded)=>{
+    const {saveSession}=await import('/src/storage.js');
+    const blob=new Blob([Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))],{type:'video/mp4'});
+    const candidate={id:-1,start:0,end:.9,bottom:.4,basis:'torso-motion',assessment:'体幹の往復候補。確認用です。'};
+    await saveSession({id:'torso-only',kind:'session',name:'体幹のみ',createdAt:1,blob,frames:[],analysis:{version:'rdl-2d-v4',model:'full',exercise:'rdl',camera:'side',side:'left',coverage:0,metricCoverage:{hip:0,knee:0,lean:1},reps:[],motionCandidates:[candidate],warnings:[],rows:[]}});
+  },readFileSync('e2e/fixtures/blank.mp4').toString('base64'));
+  await page.reload();await page.getByRole('button',{name:'履歴',exact:true}).click();await page.getByRole('button',{name:'レビューする'}).click();
+  await expect(page.locator('#result')).toContainText('0 レップ候補');
+  await expect(page.locator('#result')).toContainText('体幹の往復候補 1区間');
+  await expect(page.locator('#result')).not.toContainText('基準との差');
+  await expect(page.locator('#model')).toHaveValue('full');await expect(page.locator('#model')).toBeDisabled();
+  await page.getByRole('button',{name:'最大前傾点を見る'}).click();await expect(page.locator('#video')).toHaveJSProperty('currentTime',.4);
+  await page.getByRole('button',{name:'候補区間を再生'}).click();await expect(page.locator('#video')).toHaveJSProperty('paused',false);
+});
