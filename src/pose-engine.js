@@ -12,9 +12,9 @@ function loadPoseScript() {
 }
 export const POSE_MODEL='MediaPipe Pose Lite (modelComplexity 0)';
 export const POSE_OPTIONS=Object.freeze({modelComplexity:0,smoothLandmarks:false,enableSegmentation:false,selfieMode:false,minDetectionConfidence:0.25,minTrackingConfidence:0.25});
-export async function createPoseEngine(onResults){
+export async function createPoseEngine(onResults,model='lite'){
  await loadPoseScript();
  const pose=new window.Pose({locateFile:file=>`${assetRoot}${file}`});
- pose.setOptions({...POSE_OPTIONS});pose.onResults(onResults);
+ pose.setOptions({...POSE_OPTIONS,modelComplexity:model==='full'?1:0});pose.onResults(onResults);
  return pose;
 }
