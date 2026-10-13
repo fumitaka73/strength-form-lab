@@ -12,7 +12,7 @@ test('v1 upgrade preserves original video/Pose/review and creates lightweight me
   for(const key of ['blob','frames','note','referenceSnapshot'])assert.equal(key in summary,false);
   assert.equal('rows' in summary.analysis,false);
   const row=await getSession('legacy');assert.equal(await row.blob.text(),'video');assert.equal(row.note,'review');assert.deepEqual(row.frames,record('legacy').frames);
-  const upgraded=await open(DB_NAME,DB_VERSION);assert.equal(upgraded.version,2);upgraded.close();await deleteSession('legacy');
+  const upgraded=await open(DB_NAME,DB_VERSION);assert.equal(upgraded.version,DB_VERSION);upgraded.close();await deleteSession('legacy');
 });
 test('lists metadata only, loads chosen detail by ID, updates both stores and compacts comparison snapshot',async()=>{
   const largeReference={...record('ref'),analysis:{...analysis,rows:Array(1000).fill({time:0})}};

@@ -1,6 +1,7 @@
+import {validateSet} from './workouts.js';
 import {parseWeight} from './session-weight.js';
 export const DB_NAME='strength-form-lab';
-export const DB_VERSION=2;
+export const DB_VERSION=3;
 let pending;
 // Only the first completed rep is used as a comparison baseline. No Pose or rows.
 export function referenceSnapshot(row) {
@@ -15,6 +16,7 @@ function database() {
     const request=indexedDB.open(DB_NAME,DB_VERSION);
     request.onupgradeneeded=()=>{
       const db=request.result;
+      if(!db.objectStoreNames.contains('workoutSets')){const sets=db.createObjectStore('workoutSets',{keyPath:'id'});sets.createIndex('sourceSessionId','sourceSessionId',{unique:true});}
       if(!db.objectStoreNames.contains('sessions'))db.createObjectStore('sessions',{keyPath:'id'});
       if(!db.objectStoreNames.contains('summaries')){
         const summaries=db.createObjectStore('summaries',{keyPath:'id'});
@@ -30,7 +32,13 @@ function database() {
 }
 async function transact(stores,mode,action) {
   const db=await database();
-  return new Promise((resolve,reject)=>{const tx=db.transaction(stores,mode),r=action(tx);tx.oncomplete=()=>resolve(r?.result);tx.onabort=tx.onerror=()=>reject(tx.error??new Error('保存に失敗しました。容量を確認してください。'));});
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(stores,mode);let r,requestError;
+    tx.oncomplete=()=>resolve(r?.result);
+    tx.onerror=event=>{requestError=event.target.error;};
+    tx.onabort=()=>reject(requestError??tx.error??new Error('保存に失敗しました。容量を確認してください。'));
+    try{r=action(tx);}catch(error){requestError=error;tx.abort();}
+  });
 }
 export const saveSession=row=>{
   const saved={...row,weightKg:parseWeight(row.weightKg),referenceSnapshot:row.referenceSnapshot?referenceSnapshot(row.referenceSnapshot):null};
@@ -43,3 +51,12 @@ export const getSession=async id=>{
   return row;
 };
 export const deleteSession=id=>transact(['sessions','summaries'],'readwrite',tx=>{tx.objectStore('summaries').delete(id);return tx.objectStore('sessions').delete(id);});
+
+export const listWorkoutSets=()=>transact(['workoutSets'],'readonly',tx=>tx.objectStore('workoutSets').getAll());
+export const saveWorkoutSets=rows=>{
+  const validated=rows.map(validateSet);
+  return transact(['workoutSets'],'readwrite',tx=>{
+    const store=tx.objectStore('workoutSets');for(const row of validated)store.put(row);
+  }).catch(error=>{if(error?.name==='ConstraintError')throw new Error('この動画はすでにセット記録に関連付けられています。既存のセットを編集してください。');throw error;});
+};
+export const deleteWorkoutSet=id=>transact(['workoutSets'],'readwrite',tx=>tx.objectStore('workoutSets').delete(id));

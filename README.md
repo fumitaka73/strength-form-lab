@@ -45,3 +45,7 @@ Nodeテストはレップ状態遷移・欠測・不完全レップ・座標補�
 ## 移植元
 
 `fumitaka73/personal-sports-form-lab` main `4f348045c0a8ea38c4d6d81fb4bda89a4fbb0ea2` の `pose-engine.js`、`pose-coordinates.js`、`coach-voice.js`、`copy-pose-assets.js` を再利用。元アプリに変更していません。シュート検出器・バスケットボール評価基準は使用していません。
+
+## 撮影なしのトレーニング記録（v0.4.0）
+
+履歴タブから日付・種目・重量・回数・セット数を入力し、セット単位で編集/削除できます。日別/種目別の推移表と総負荷量を表示。動画を撮らずに完結します。動画候補は自動計上せず、任意の関連付けでも回数は本人が入力します。DB v3への更新は新しいworkoutSetsだけを追加し、既存のsessions/summariesを保持します。[保存影響・iPhone確認手順](docs/issue-7-workouts.md)。
