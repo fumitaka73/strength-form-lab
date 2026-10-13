@@ -108,3 +108,10 @@ Personal Sports Form Lab の技術を再利用して、筋トレ専用の独立�
 - https://learn.chatgpt.com/docs/cloud
 - https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/web_js
 - https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site
+
+## 2026-10-13 次期開発の優先順
+
+現在のmainはv0.5.0で動画レビュー・参考評価・動画なし日誌を提供。
+次はIssue #13（iPhoneレイアウト）のPRを先行し、Issue #12の「解析の仮回数→本人修正→当日のセット記録」を最重要の体験として別PRで進める。
+その後、Issue #8の参考角度/不足度数を根拠・角度定義・適用条件とともに検証し、Issue #9で結果と記録を一体化したUIを整える。
+画面幅320/375/390/430pxの退行確認と既存DB v3の保持を全段階で維持する。詳細な段階案は[Issue #13の作業記録](issue-13-layout.md#次のprの順序設計方針)を参照。
