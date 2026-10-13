@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 async function history(page){await page.goto('/');await page.getByRole('button',{name:'履歴',exact:true}).click();}
 async function add(page,{exercise='rdl',weight='40',reps='8',count='1',date='2026-10-13'}={}){await page.locator('#workout-date').fill(date);await page.locator('#workout-exercise').selectOption(exercise);await page.locator('#workout-weight').fill(weight);await page.locator('#workout-reps').fill(reps);await page.locator('#workout-count').fill(count);await page.locator('#workout-submit').click();await expect(page.locator('#status')).toContainText('セット記録を保存しました');}
 test('no-video multiple exercises/sets survive reload, per-set editing/deletion and accurate trends',async({page})=>{
- await history(page);await expect(page.locator('.app-version')).toHaveText('v0.4.0');
+ await history(page);await expect(page.locator('.app-version')).toHaveText('v0.5.0');
  await add(page,{count:'2'});await add(page,{exercise:'squat',weight:'0',reps:'10'});await add(page,{exercise:'bench',weight:'',reps:'5'});
  await page.locator('#workout-exercise').selectOption('other');await page.locator('#workout-custom').fill('ラットプル');await page.locator('#workout-weight').fill('20');await page.locator('#workout-reps').fill('12');await page.locator('#workout-submit').click();await expect(page.locator('#status')).toContainText('保存しました');
  await add(page,{date:'2026-10-14',weight:'50',reps:'6'});
