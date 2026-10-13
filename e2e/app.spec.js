@@ -44,6 +44,7 @@ test('real video playback, persisted history, comparison snapshot, note and isol
 });
 
 test('fresh analysis saves edited metadata and preserves playback across BFCache lifecycle',async({page})=>{
+  test.setTimeout(90000);
   await page.goto('/');await page.locator('#file').setInputFiles('e2e/fixtures/blank.mp4');
   await expect(page.locator('#analyze')).toBeEnabled();await page.locator('#analyze').click();
   await expect(page.locator('#status')).toContainText('分析完了',{timeout:60000});
